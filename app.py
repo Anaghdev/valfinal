@@ -18,7 +18,8 @@ except ImportError:
 st.set_page_config(page_title="Our Love Story", layout="centered", page_icon="💖")
 
 # ---------------- HELPER FUNCTIONS ----------------
-def get_audio_html(file_path):
+@st.cache_data
+def get_audio_html(file_path, _mtime=None):
     try:
         ext = os.path.splitext(file_path)[1].lower().replace(".", "")
         mime_type = f"audio/{ext}"
@@ -40,6 +41,14 @@ def get_audio_html(file_path):
         """
     except Exception as e:
         return ""
+
+@st.cache_data
+def get_file_b64(file_path, _mtime=None):
+    try:
+        with open(file_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except:
+        return None
 
 def render_voice_note(day_key):
     st.markdown("---")
@@ -117,9 +126,9 @@ def render_voice_note(day_key):
         # st.caption(f"Playing: {os.path.basename(best_file)} ({size_mb:.2f} MB)") 
 
         # Read as bytes and use Base64 to force browser to play it natively
-        with open(best_file, "rb") as f:
-            audio_bytes = f.read()
-            b64 = base64.b64encode(audio_bytes).decode()
+        # Read as bytes and use Base64 to force browser to play it natively
+        # Use cached function with mtime for invalidation
+        b64 = get_file_b64(best_file, os.path.getmtime(best_file))
             
         # Custom HTML Audio Player
         audio_html = f"""
@@ -136,6 +145,7 @@ def render_voice_note(day_key):
         </div>
         """, unsafe_allow_html=True)
 
+@st.cache_data
 def load_lottieurl(url):
     try:
         r = requests.get(url)
@@ -145,7 +155,8 @@ def load_lottieurl(url):
     except:
         return None
 
-def get_image_b64(file_path):
+@st.cache_data
+def get_image_b64(file_path, _mtime=None):
     try:
         with open(file_path, "rb") as f:
             return base64.b64encode(f.read()).decode()
@@ -730,7 +741,7 @@ def page_valentine():
     st.balloons()
     
     if os.path.exists("photo1.jpg"):
-        st.markdown("<div class='glass-card' style='padding:10px;'><img src='data:image/jpeg;base64,"+get_image_b64("photo1.jpg")+"' style='width:100%; border-radius:10px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div class='glass-card' style='padding:10px;'><img src='data:image/jpeg;base64,"+get_image_b64("photo1.jpg", os.path.getmtime("photo1.jpg"))+"' style='width:100%; border-radius:10px;'></div>", unsafe_allow_html=True)
         
     render_voice_note("valentine")
 
@@ -820,7 +831,7 @@ def main():
         music_file = "love.mp3"
     
     if os.path.exists(music_file):
-        components.html(get_audio_html(music_file), height=0)
+        components.html(get_audio_html(music_file, os.path.getmtime(music_file)), height=0)
 
     # RENDER PAGE
     if dev_mode:
